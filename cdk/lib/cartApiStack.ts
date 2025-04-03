@@ -12,9 +12,13 @@ export class CartApiStack extends cdk.Stack {
       code: lambda.Code.fromAsset('dist'),
       environment: {
         NODE_ENV: 'aws',
-        AUTH_USERNAME: process.env.AUTH_USERNAME,
-        AUTH_PASSWORD: process.env.AUTH_PASSWORD,
+        POSTGRES_HOST: process.env.POSTGRES_HOST,
+        POSTGRES_PORT: process.env.POSTGRES_PORT,
+        POSTGRES_USER: process.env.POSTGRES_USER,
+        POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD,
+        POSTGRES_DATABASE: process.env.POSTGRES_DATABASE,
       },
+      timeout: cdk.Duration.seconds(30),
     });
 
     const functionUrl = cartApiLambda.addFunctionUrl({
