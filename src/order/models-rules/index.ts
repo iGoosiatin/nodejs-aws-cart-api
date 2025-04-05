@@ -1,4 +1,4 @@
-import { CartProduct } from '../models';
+import { CartProduct } from 'src/cart/models';
 
 export function calculateCartTotal(items: CartProduct[]): number {
   return items.length

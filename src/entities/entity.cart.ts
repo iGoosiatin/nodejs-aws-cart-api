@@ -18,26 +18,27 @@ export class Cart {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid', nullable: false })
+  @Column({ type: 'uuid' })
   userId: string;
 
   @CreateDateColumn({
     type: 'timestamptz',
     default: () => 'CURRENT_TIMESTAMP',
-    nullable: false,
   })
   createdAt: Date;
 
   @UpdateDateColumn({
     type: 'timestamptz',
     default: () => 'CURRENT_TIMESTAMP',
-    nullable: false,
   })
   updatedAt: Date;
 
   @Column({ type: 'enum', enum: CartStatus, default: CartStatus.OPEN })
   status: string;
 
-  @OneToMany(() => CartItem, (cartItem) => cartItem.cart)
+  @OneToMany(() => CartItem, (cartItem) => cartItem.cart, {
+    onDelete: 'CASCADE',
+    cascade: true,
+  })
   cartItems: CartItem[];
 }

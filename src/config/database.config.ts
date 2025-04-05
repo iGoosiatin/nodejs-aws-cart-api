@@ -1,6 +1,7 @@
 import { registerAs } from '@nestjs/config';
 import { Cart } from 'src/entities/entity.cart';
 import { CartItem } from 'src/entities/entity.cartItem';
+import { Order } from 'src/entities/entity.order';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
 export default registerAs('database', () => ({
@@ -10,7 +11,7 @@ export default registerAs('database', () => ({
   username: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DATABASE,
-  entities: [Cart, CartItem],
+  entities: [Cart, CartItem, Order],
   synchronize: true,
   ssl: {
     rejectUnauthorized: false,

@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Cart } from 'src/entities/entity.cart';
+import { Not, Repository } from 'typeorm';
+import { Cart, CartStatus } from 'src/entities/entity.cart';
 import { CartItem } from 'src/entities/entity.cartItem';
 import { CartItemDto } from '../dto/cartItem.dto';
 import { ProductService } from 'src/product/services';
 import { InsufficientStockException } from '../exceptions';
-import { CartProduct, CartWithProductsData } from '../models';
+import { CartProduct } from '../models';
 
 @Injectable()
 export class CartService {
@@ -20,7 +20,7 @@ export class CartService {
 
   async findByUserId(userId: string): Promise<Cart | null> {
     return await this.cartsRepository.findOne({
-      where: { userId },
+      where: { userId, status: Not(CartStatus.ORDERED) },
       relations: ['cartItems'],
     });
   }
@@ -87,7 +87,11 @@ export class CartService {
     return await this.findByUserId(userId);
   }
 
-  removeByUserId(userId: string): void {
-    this.cartsRepository.delete({ userId });
+  async removeByUserId(userId: string) {
+    return await this.cartsRepository.delete({ userId });
+  }
+
+  updateStatusById(cartId: string, status: CartStatus): void {
+    this.cartsRepository.update({ id: cartId }, { status });
   }
 }
