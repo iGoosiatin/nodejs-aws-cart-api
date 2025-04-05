@@ -17,3 +17,12 @@ export class InsufficientStockException extends HttpException {
     );
   }
 }
+
+export class InsufficientStocksException extends HttpException {
+  constructor(message: string) {
+    super(
+      `Cannot purchase more than available: ${message}`,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}

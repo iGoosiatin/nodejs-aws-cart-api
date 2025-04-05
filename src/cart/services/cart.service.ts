@@ -29,7 +29,7 @@ export class CartService {
     if (cartItems.length === 0) {
       return [];
     }
-    const products = await this.productService.getByIds(
+    const products = await this.productService.getAvailableProductsByIds(
       cartItems.map(({ productId }) => productId),
     );
 
@@ -57,7 +57,8 @@ export class CartService {
   async updateByUserId(userId: string, payload: CartItemDto): Promise<Cart> {
     const { productId, count } = payload;
 
-    const product = await this.productService.getById(productId);
+    const product =
+      await this.productService.getAvailableProductById(productId);
 
     if (count && count > product.count) {
       throw new InsufficientStockException(product.count);

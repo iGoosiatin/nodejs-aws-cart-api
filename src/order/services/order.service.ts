@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateOrderPayload } from '../type';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entities/entity.order';
@@ -6,6 +10,7 @@ import { DataSource, Repository } from 'typeorm';
 import { Cart } from 'src/entities/entity.cart';
 import { CartService } from 'src/cart/services';
 import { calculateCartTotal } from '../models-rules';
+import { ProductService } from 'src/product/services';
 
 @Injectable()
 export class OrderService {
@@ -13,6 +18,7 @@ export class OrderService {
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
     private cartService: CartService,
+    private productService: ProductService,
     private dataSource: DataSource,
   ) {}
 
@@ -83,6 +89,11 @@ export class OrderService {
 
       await queryRunner.manager.save(order);
 
+      await queryRunner.manager.update(Cart, { userId }, { status: 'ORDERED' });
+
+      // This is not part of transaction, as not is not controlled by ORM
+      await this.productService.updateStocksFromOrderCart(cartItems);
+
       await queryRunner.commitTransaction();
 
       return order;
@@ -95,6 +106,10 @@ export class OrderService {
   }
 
   async deleteById(id: string) {
-    return await this.orderRepository.delete({ id });
+    const order = await this.findById(id, true);
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${id} not found`);
+    }
+    return await this.orderRepository.remove(order);
   }
 }
