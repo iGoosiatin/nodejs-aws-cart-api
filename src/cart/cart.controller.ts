@@ -16,6 +16,7 @@ import { AppRequest, getUserIdFromRequest } from '../shared';
 import { CartService } from './services';
 import { CreateOrderDto, PutCartPayload } from 'src/order/type';
 import { CartItem } from 'src/entities/entity.cartItem';
+import { CartItemDto } from './dto/cartItem.dto';
 
 @Controller('api/profile/cart')
 export class CartController {
@@ -40,9 +41,8 @@ export class CartController {
   @Put()
   async updateUserCart(
     @Req() req: AppRequest,
-    @Body() body: PutCartPayload,
+    @Body() body: CartItemDto,
   ): Promise<CartItem[]> {
-    // TODO: validate body payload...
     const cart = await this.cartService.updateByUserId(
       getUserIdFromRequest(req),
       body,

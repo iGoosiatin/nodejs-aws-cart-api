@@ -1,11 +1,12 @@
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { ValidationPipe } from '@nestjs/common';
 import serverlessExpress from '@codegenie/serverless-express';
 import { Callback, Context, Handler } from 'aws-lambda';
 
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
-import { ConfigService } from '@nestjs/config';
 
 let server: Handler;
 
@@ -16,6 +17,12 @@ async function createApp() {
     origin: (req, callback) => callback(null, true),
   });
   app.use(helmet());
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+    }),
+  );
 
   return app;
 }

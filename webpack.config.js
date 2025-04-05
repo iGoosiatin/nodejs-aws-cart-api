@@ -10,6 +10,7 @@ module.exports = (options, webpack) => {
     ...options,
     externals: [],
     optimization: {
+      minimize: true,
       minimizer: [
         new TerserPlugin({
           terserOptions: {
