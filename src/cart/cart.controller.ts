@@ -17,6 +17,8 @@ import { CartService } from './services';
 import { CreateOrderDto, PutCartPayload } from 'src/order/type';
 import { CartItem } from 'src/entities/entity.cartItem';
 import { CartItemDto } from './dto/cartItem.dto';
+import { InvalidProductException } from './exceptions';
+import { ProductNotFound } from 'src/product/errors';
 
 @Controller('api/profile/cart')
 export class CartController {
@@ -43,12 +45,18 @@ export class CartController {
     @Req() req: AppRequest,
     @Body() body: CartItemDto,
   ): Promise<CartItem[]> {
-    const cart = await this.cartService.updateByUserId(
-      getUserIdFromRequest(req),
-      body,
-    );
+    try {
+      const cart = await this.cartService.updateByUserId(
+        getUserIdFromRequest(req),
+        body,
+      );
 
-    return cart.cartItems || [];
+      return cart.cartItems || [];
+    } catch (error) {
+      if (error instanceof ProductNotFound) {
+        throw new InvalidProductException(body.productId);
+      } else throw error;
+    }
   }
 
   // @UseGuards(JwtAuthGuard)

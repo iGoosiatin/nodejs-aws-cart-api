@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { Cart } from 'src/entities/entity.cart';
 import { CartItem } from 'src/entities/entity.cartItem';
 import { CartItemDto } from '../dto/cartItem.dto';
+import { ProductService } from 'src/product/services';
+import { InsufficientStockException } from '../exceptions';
 
 @Injectable()
 export class CartService {
@@ -12,6 +14,7 @@ export class CartService {
     private cartsRepository: Repository<Cart>,
     @InjectRepository(CartItem)
     private cartItemsRepository: Repository<CartItem>,
+    private productService: ProductService,
   ) {}
 
   async findByUserId(userId: string): Promise<Cart | null> {
@@ -37,28 +40,33 @@ export class CartService {
   }
 
   async updateByUserId(userId: string, payload: CartItemDto): Promise<Cart> {
+    const { productId, count } = payload;
+
+    const product = await this.productService.getById(productId);
+
+    if (count && count > product.count) {
+      throw new InsufficientStockException(product.count);
+    }
+
     const userCart = await this.findOrCreateByUserId(userId);
 
     const index = (userCart.cartItems || []).findIndex(
-      (cartItem) => cartItem.productId === payload.productId,
+      (cartItem) => cartItem.productId === productId,
     );
 
     if (index === -1) {
       const newCartItem = this.cartItemsRepository.create({
-        productId: payload.productId,
-        count: payload.count,
+        productId,
+        count: count,
         cart: userCart,
       });
       await this.cartItemsRepository.save(newCartItem);
-    } else if (payload.count === 0) {
+    } else if (count === 0) {
       await this.cartItemsRepository.delete({
-        productId: payload.productId,
+        productId,
       });
     } else {
-      await this.cartItemsRepository.update(
-        { productId: payload.productId },
-        { count: payload.count },
-      );
+      await this.cartItemsRepository.update({ productId }, { count });
     }
 
     return await this.findByUserId(userId);

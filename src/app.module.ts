@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { OrderModule } from './order/order.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ProductModule } from './product/product.module';
 
 import databaseConfig from './config/database.config';
 
@@ -15,6 +16,7 @@ import databaseConfig from './config/database.config';
     AuthModule,
     CartModule,
     OrderModule,
+    ProductModule,
     ConfigModule.forRoot(),
     TypeOrmModule.forRootAsync(databaseConfig.asProvider()),
   ],
