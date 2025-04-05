@@ -1,7 +1,6 @@
 import { IsNotEmpty, IsUUID, IsNumber, Min } from 'class-validator';
-import { CartItem } from '../models';
 
-export class CartItemDto implements CartItem {
+export class CartItemDto {
   @IsUUID()
   @IsNotEmpty()
   productId: string;

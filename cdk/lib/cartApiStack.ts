@@ -55,6 +55,8 @@ export class CartApiStack extends cdk.Stack {
         allowedOrigins: ['*'],
         allowedMethods: [lambda.HttpMethod.ALL],
         allowedHeaders: ['*'],
+        maxAge: cdk.Duration.seconds(0),
+        allowCredentials: true,
       },
     });
 

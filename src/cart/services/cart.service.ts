@@ -6,6 +6,7 @@ import { CartItem } from 'src/entities/entity.cartItem';
 import { CartItemDto } from '../dto/cartItem.dto';
 import { ProductService } from 'src/product/services';
 import { InsufficientStockException } from '../exceptions';
+import { CartProduct, CartWithProductsData } from '../models';
 
 @Injectable()
 export class CartService {
@@ -22,6 +23,20 @@ export class CartService {
       where: { userId },
       relations: ['cartItems'],
     });
+  }
+
+  async addProductsData(cartItems: Cart['cartItems']): Promise<CartProduct[]> {
+    if (cartItems.length === 0) {
+      return [];
+    }
+    const products = await this.productService.getByIds(
+      cartItems.map(({ productId }) => productId),
+    );
+
+    return cartItems.map((cartItem) => ({
+      product: products.find(({ id }) => id === cartItem.productId),
+      count: cartItem.count,
+    }));
   }
 
   async createByUserId(userId: string): Promise<Cart> {

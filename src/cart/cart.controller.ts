@@ -14,11 +14,11 @@ import { BasicAuthGuard } from '../auth';
 import { Order, OrderService } from '../order';
 import { AppRequest, getUserIdFromRequest } from '../shared';
 import { CartService } from './services';
-import { CreateOrderDto, PutCartPayload } from 'src/order/type';
-import { CartItem } from 'src/entities/entity.cartItem';
+import { CreateOrderDto } from 'src/order/type';
 import { CartItemDto } from './dto/cartItem.dto';
 import { InvalidProductException } from './exceptions';
 import { ProductNotFound } from 'src/product/errors';
+import { CartProduct } from './models';
 
 @Controller('api/profile/cart')
 export class CartController {
@@ -30,12 +30,12 @@ export class CartController {
   // @UseGuards(JwtAuthGuard)
   @UseGuards(BasicAuthGuard)
   @Get()
-  async findUserCart(@Req() req: AppRequest): Promise<CartItem[]> {
+  async findUserCart(@Req() req: AppRequest): Promise<CartProduct[]> {
     const cart = await this.cartService.findOrCreateByUserId(
       getUserIdFromRequest(req),
     );
 
-    return cart.cartItems || [];
+    return await this.cartService.addProductsData(cart.cartItems || []);
   }
 
   // @UseGuards(JwtAuthGuard)
@@ -44,14 +44,14 @@ export class CartController {
   async updateUserCart(
     @Req() req: AppRequest,
     @Body() body: CartItemDto,
-  ): Promise<CartItem[]> {
+  ): Promise<CartProduct[]> {
     try {
       const cart = await this.cartService.updateByUserId(
         getUserIdFromRequest(req),
         body,
       );
 
-      return cart.cartItems || [];
+      return await this.cartService.addProductsData(cart.cartItems || []);
     } catch (error) {
       if (error instanceof ProductNotFound) {
         throw new InvalidProductException(body.productId);

@@ -11,11 +11,8 @@ import { AppModule } from './app.module';
 let server: Handler;
 
 async function createApp() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { cors: false });
 
-  app.enableCors({
-    origin: (req, callback) => callback(null, true),
-  });
   app.use(helmet());
 
   app.useGlobalPipes(
