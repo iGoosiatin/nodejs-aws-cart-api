@@ -1,14 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateOrderPayload } from '../type';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/entities/entity.order';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { Cart } from 'src/entities/entity.cart';
+import { CartService } from 'src/cart/services';
+import { calculateCartTotal } from '../models-rules';
 
 @Injectable()
 export class OrderService {
   constructor(
     @InjectRepository(Order)
     private orderRepository: Repository<Order>,
+    private cartService: CartService,
+    private dataSource: DataSource,
   ) {}
 
   async getAll(joinCartItems = false) {
@@ -46,8 +51,47 @@ export class OrderService {
   }
 
   async create(data: CreateOrderPayload) {
-    const userCart = this.orderRepository.create(data);
-    return await this.orderRepository.save(userCart);
+    const { userId, delivery } = data;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const cart = await queryRunner.manager.findOne(Cart, {
+        where: { userId: data.userId },
+        relations: {
+          cartItems: true,
+        },
+      });
+
+      if (!(cart && cart.cartItems.length)) {
+        throw new BadRequestException('Cart is empty');
+      }
+
+      const { cartItems } = cart;
+
+      const cartProduct = await this.cartService.addProductsData(cartItems);
+
+      const total = calculateCartTotal(cartProduct);
+
+      const order = queryRunner.manager.create(Order, {
+        userId,
+        delivery,
+        cart,
+        total,
+      });
+
+      await queryRunner.manager.save(order);
+
+      await queryRunner.commitTransaction();
+
+      return order;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async deleteById(id: string) {
