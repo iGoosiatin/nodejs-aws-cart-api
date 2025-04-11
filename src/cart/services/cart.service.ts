@@ -1,62 +1,98 @@
 import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import { Cart, CartStatuses } from '../models';
-import { PutCartPayload } from 'src/order/type';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Not, Repository } from 'typeorm';
+import { Cart, CartStatus } from 'src/entities/entity.cart';
+import { CartItem } from 'src/entities/entity.cartItem';
+import { CartItemDto } from '../dto/cartItem.dto';
+import { ProductService } from 'src/product/services';
+import { InsufficientStockException } from '../exceptions';
+import { CartProduct } from '../models';
 
 @Injectable()
 export class CartService {
-  private userCarts: Record<string, Cart> = {};
+  constructor(
+    @InjectRepository(Cart)
+    private cartsRepository: Repository<Cart>,
+    @InjectRepository(CartItem)
+    private cartItemsRepository: Repository<CartItem>,
+    private productService: ProductService,
+  ) {}
 
-  findByUserId(userId: string): Cart {
-    return this.userCarts[userId];
+  async findByUserId(userId: string): Promise<Cart | null> {
+    return await this.cartsRepository.findOne({
+      where: { userId, status: Not(CartStatus.ORDERED) },
+      relations: ['cartItems'],
+    });
   }
 
-  createByUserId(user_id: string): Cart {
-    const timestamp = Date.now();
+  async addProductsData(cartItems: Cart['cartItems']): Promise<CartProduct[]> {
+    if (cartItems.length === 0) {
+      return [];
+    }
+    const products = await this.productService.getAvailableProductsByIds(
+      cartItems.map(({ productId }) => productId),
+    );
 
-    const userCart = {
-      id: randomUUID(),
-      user_id,
-      created_at: timestamp,
-      updated_at: timestamp,
-      status: CartStatuses.OPEN,
-      items: [],
-    };
-
-    this.userCarts[user_id] = userCart;
-
-    return userCart;
+    return cartItems.map((cartItem) => ({
+      product: products.find(({ id }) => id === cartItem.productId),
+      count: cartItem.count,
+    }));
   }
 
-  findOrCreateByUserId(userId: string): Cart {
-    const userCart = this.findByUserId(userId);
+  async createByUserId(userId: string): Promise<Cart> {
+    const userCart = this.cartsRepository.create({ userId });
+    return await this.cartsRepository.save(userCart);
+  }
+
+  async findOrCreateByUserId(userId: string): Promise<Cart> {
+    const userCart = await this.findByUserId(userId);
 
     if (userCart) {
       return userCart;
     }
 
-    return this.createByUserId(userId);
+    return await this.createByUserId(userId);
   }
 
-  updateByUserId(userId: string, payload: PutCartPayload): Cart {
-    const userCart = this.findOrCreateByUserId(userId);
+  async updateByUserId(userId: string, payload: CartItemDto): Promise<Cart> {
+    const { productId, count } = payload;
 
-    const index = userCart.items.findIndex(
-      ({ product }) => product.id === payload.product.id,
+    const product =
+      await this.productService.getAvailableProductById(productId);
+
+    if (count && count > product.count) {
+      throw new InsufficientStockException(product.count);
+    }
+
+    const userCart = await this.findOrCreateByUserId(userId);
+
+    const index = (userCart.cartItems || []).findIndex(
+      (cartItem) => cartItem.productId === productId,
     );
 
     if (index === -1) {
-      userCart.items.push(payload);
-    } else if (payload.count === 0) {
-      userCart.items.splice(index, 1);
+      const newCartItem = this.cartItemsRepository.create({
+        productId,
+        count: count,
+        cart: userCart,
+      });
+      await this.cartItemsRepository.save(newCartItem);
+    } else if (count === 0) {
+      await this.cartItemsRepository.delete({
+        productId,
+      });
     } else {
-      userCart.items[index] = payload;
+      await this.cartItemsRepository.update({ productId }, { count });
     }
 
-    return userCart;
+    return await this.findByUserId(userId);
   }
 
-  removeByUserId(userId): void {
-    this.userCarts[userId] = null;
+  async removeByUserId(userId: string) {
+    return await this.cartsRepository.delete({ userId });
+  }
+
+  updateStatusById(cartId: string, status: CartStatus): void {
+    this.cartsRepository.update({ id: cartId }, { status });
   }
 }

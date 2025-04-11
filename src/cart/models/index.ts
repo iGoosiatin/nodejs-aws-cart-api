@@ -1,25 +1,11 @@
-export enum CartStatuses {
-  OPEN = 'OPEN',
-  STATUS = 'STATUS',
-}
+import { Cart } from 'src/entities/entity.cart';
+import { Product } from 'src/product/models';
 
-export type Product = {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-};
-
-export type CartItem = {
+export type CartProduct = {
   product: Product;
   count: number;
 };
 
-export type Cart = {
-  id: string;
-  user_id: string;
-  created_at: number;
-  updated_at: number;
-  status: CartStatuses;
-  items: CartItem[];
+export type CartWithProductsData = Omit<Cart, 'cartItems'> & {
+  cartItems: CartProduct[];
 };

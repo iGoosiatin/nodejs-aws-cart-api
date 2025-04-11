@@ -8,91 +8,56 @@ import {
   UseGuards,
   HttpStatus,
   HttpCode,
-  BadRequestException,
 } from '@nestjs/common';
 import { BasicAuthGuard } from '../auth';
-import { Order, OrderService } from '../order';
 import { AppRequest, getUserIdFromRequest } from '../shared';
-import { calculateCartTotal } from './models-rules';
 import { CartService } from './services';
-import { CartItem } from './models';
-import { CreateOrderDto, PutCartPayload } from 'src/order/type';
+import { CartItemDto } from './dto/cartItem.dto';
+import { InvalidProductException } from './exceptions';
+import { ProductNotFound } from 'src/product/errors';
+import { CartProduct } from './models';
 
 @Controller('api/profile/cart')
 export class CartController {
-  constructor(
-    private cartService: CartService,
-    private orderService: OrderService,
-  ) {}
+  constructor(private cartService: CartService) {}
 
   // @UseGuards(JwtAuthGuard)
   @UseGuards(BasicAuthGuard)
   @Get()
-  findUserCart(@Req() req: AppRequest): CartItem[] {
-    const cart = this.cartService.findOrCreateByUserId(
+  async findUserCart(@Req() req: AppRequest): Promise<CartProduct[]> {
+    const cart = await this.cartService.findOrCreateByUserId(
       getUserIdFromRequest(req),
     );
 
-    return cart.items;
+    return await this.cartService.addProductsData(cart.cartItems || []);
   }
 
   // @UseGuards(JwtAuthGuard)
   @UseGuards(BasicAuthGuard)
   @Put()
-  updateUserCart(
+  async updateUserCart(
     @Req() req: AppRequest,
-    @Body() body: PutCartPayload,
-  ): CartItem[] {
-    // TODO: validate body payload...
-    const cart = this.cartService.updateByUserId(
-      getUserIdFromRequest(req),
-      body,
-    );
+    @Body() body: CartItemDto,
+  ): Promise<CartProduct[]> {
+    try {
+      const cart = await this.cartService.updateByUserId(
+        getUserIdFromRequest(req),
+        body,
+      );
 
-    return cart.items;
+      return await this.cartService.addProductsData(cart.cartItems || []);
+    } catch (error) {
+      if (error instanceof ProductNotFound) {
+        throw new InvalidProductException(body.productId);
+      } else throw error;
+    }
   }
 
   // @UseGuards(JwtAuthGuard)
   @UseGuards(BasicAuthGuard)
   @Delete()
-  @HttpCode(HttpStatus.OK)
-  clearUserCart(@Req() req: AppRequest) {
-    this.cartService.removeByUserId(getUserIdFromRequest(req));
-  }
-
-  // @UseGuards(JwtAuthGuard)
-  @UseGuards(BasicAuthGuard)
-  @Put('order')
-  checkout(@Req() req: AppRequest, @Body() body: CreateOrderDto) {
-    const userId = getUserIdFromRequest(req);
-    const cart = this.cartService.findByUserId(userId);
-
-    if (!(cart && cart.items.length)) {
-      throw new BadRequestException('Cart is empty');
-    }
-
-    const { id: cartId, items } = cart;
-    const total = calculateCartTotal(items);
-    const order = this.orderService.create({
-      userId,
-      cartId,
-      items: items.map(({ product, count }) => ({
-        productId: product.id,
-        count,
-      })),
-      address: body.address,
-      total,
-    });
-    this.cartService.removeByUserId(userId);
-
-    return {
-      order,
-    };
-  }
-
-  @UseGuards(BasicAuthGuard)
-  @Get('order')
-  getOrder(): Order[] {
-    return this.orderService.getAll();
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async clearUserCart(@Req() req: AppRequest) {
+    return await this.cartService.removeByUserId(getUserIdFromRequest(req));
   }
 }
