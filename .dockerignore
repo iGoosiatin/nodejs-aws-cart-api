@@ -1,0 +1,26 @@
+#Don't include packages
+node_modules 
+#Don't include build files
+dist
+#Don't CDK files
+cdk
+cdk.out
+#Dont' include scripts
+scripts
+
+#Misc
+.vscode
+.idea
+*.md
+*.log
+.dockerignore
+.git
+.gitignore
+.env.*
+.eslisntrc.js
+.prettierrc
+cdk.json
+npm-debug.log
+README.md
+docker-compose*
+Dockerfile*
